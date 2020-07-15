@@ -18,6 +18,7 @@ from lightfm import LightFM
 from scipy import sparse
 from lightfm.evaluation import auc_score
 
+
 # ************************************************************************************
 
 def create_interaction_matrix(df, user_col, item_col, rating_col, norm=False, threshold=None):
@@ -125,6 +126,39 @@ def sample_recommendation_user(model, interactions, user_id, user_dict,
 
 
 f = open('rating_final_U1011.json', )
+ff = open('userprofile.json', )
+df = open(r'geoplaces2.json')
+data_User = json.load(ff)
+data_item = json.load(df)
+data = json.load(f)
+dataset = Dataset()
+dataset.fit((x['userID'] for x in data),
+            (x['placeID'] for x in data), (x['budget'] for x in data_User),(x['price'] for x in data_item))
+(interactions, weights) = dataset.build_interactions(((x['userID'], x['placeID']) for x in data))
+print(repr(interactions))
+user_interactions = dataset.build_user_features((x['userID'], [x['budget']]) for x in data_User)
+print(repr(user_interactions))
+item_interactions = dataset.build_item_features((x['placeID'], [x['price']]) for x in data_item)
+print(repr(item_interactions))
+
+NUM_THREADS = 2
+NUM_COMPONENTS = 30
+NUM_EPOCHS = 3
+ITEM_ALPHA = 1e-6
+
+model = LightFM(loss='warp',
+                item_alpha=ITEM_ALPHA,
+                no_components=NUM_COMPONENTS)
+
+model = model.fit(interactions, epochs=NUM_EPOCHS, num_threads=NUM_THREADS)
+
+
+
+
+# print(interactions)
+# print(test_interactions)
+'''
+f = open('rating_final_U1011.json', )
 data = json.load(f)
 dataset = Dataset()
 dataset.fit((x['userID'] for x in data),
@@ -133,6 +167,7 @@ dataset.fit((x['userID'] for x in data),
 # print(repr(interactions))
 # print(interactions)
 # print(test_interactions)
+
 NUM_THREADS = 1
 NUM_COMPONENTS = 30
 NUM_EPOCHS = 3
@@ -155,3 +190,4 @@ user_dict = create_user_dict(interactions)
 sample_recommendation_user(model, interactions, "U1013", user_dict,
                            item_dict, threshold=0, nrec_items=5, show=True)
 f.close()
+'''
