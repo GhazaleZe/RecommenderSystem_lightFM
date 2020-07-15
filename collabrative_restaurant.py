@@ -150,44 +150,14 @@ model = LightFM(loss='warp',
                 item_alpha=ITEM_ALPHA,
                 no_components=NUM_COMPONENTS)
 
-model = model.fit(interactions, epochs=NUM_EPOCHS, num_threads=NUM_THREADS)
-
-
-
-
-# print(interactions)
-# print(test_interactions)
-'''
-f = open('rating_final_U1011.json', )
-data = json.load(f)
-dataset = Dataset()
-dataset.fit((x['userID'] for x in data),
-            (x['placeID'] for x in data))
-(interactions, weights) = dataset.build_interactions(((x['userID'], x['placeID']) for x in data))
-# print(repr(interactions))
-# print(interactions)
-# print(test_interactions)
-
-NUM_THREADS = 1
-NUM_COMPONENTS = 30
-NUM_EPOCHS = 3
-ITEM_ALPHA = 1e-6
-
-# Let's fit a WARP model: these generally have the best performance.
-model = LightFM(loss='warp',
-                item_alpha=ITEM_ALPHA,
-                no_components=NUM_COMPONENTS)
-
-# Run 3 epochs and time it.
-model = model.fit(interactions, epochs=NUM_EPOCHS, num_threads=NUM_THREADS)
-model.item_biases *= 0.0
+model = model.fit(interactions,user_features=user_interactions,item_features=item_interactions,epochs=NUM_EPOCHS,num_threads=NUM_THREADS)
 
 df = pd.read_json(r'geoplaces2.json')
 dfm = pd.read_json(r'rating_final_U1011.json')
-interactions = create_interaction_matrix(dfm, "userID", "placeID", "rating", norm=False, threshold=None)
+interactions1 = create_interaction_matrix(dfm, "userID", "placeID", "rating", norm=False, threshold=None)
 item_dict = create_item_dict(df, "placeID", "name")
-user_dict = create_user_dict(interactions)
-sample_recommendation_user(model, interactions, "U1013", user_dict,
+user_dict = create_user_dict(interactions1)
+sample_recommendation_user(model, interactions1, "U1011", user_dict,
                            item_dict, threshold=0, nrec_items=5, show=True)
+
 f.close()
-'''
