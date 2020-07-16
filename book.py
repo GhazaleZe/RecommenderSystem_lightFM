@@ -6,25 +6,17 @@ import requests
 
 import json
 from itertools import islice
-
 import sklearn.preprocessing
 from lightfm.data import Dataset
-
-import pandas
 import numpy as np
-from lightfm import LightFM
+from lightfm import LightFM, lightfm
+from lightfm.evaluation import auc_score
 from scipy import sparse
 from sklearn.metrics.pairwise import cosine_similarity
 
-''''
-#create json file from csv file
-df = pd.read_csv(r'books_with_blurbs.csv')
-df.to_json(r'books_with_blurbs.json', orient='records')
-'''
-
 
 # *********************************************************************
-def create_item_dict(df, id_col, name_col):
+def create_item_dict(df, id_col, name_col,author_col):
     '''
     Function to create an item dictionary based on their item_id and item name
     Required Input -
@@ -36,7 +28,7 @@ def create_item_dict(df, id_col, name_col):
     '''
     item_dict = {}
     for i in range(df.shape[0]):
-        item_dict[(df.loc[i, id_col])] = df.loc[i, name_col]
+        item_dict[(df.loc[i, id_col])] = df.loc[i, name_col] +' : '+df.loc[i, author_col]
     return item_dict
 
 
@@ -106,80 +98,107 @@ def item_item_recommendation(item_emdedding_distance_matrix, item_id,
     return recommended_items
 
 
-# *********************************************************************************
-def runMF(interactions, n_components=30, loss='warp', k=15, epoch=30, n_jobs=4):
+
+def create_item_emdedding_distance_matrix(model, interactions):
     '''
-    Function to run matrix-factorization algorithm
+    Function to create item-item distance embedding matrix
     Required Input -
-        - interactions = dataset create by create_interaction_matrix
-        - n_components = number of embeddings you want to create to define Item and user
-        - loss = loss function other options are logistic, brp
-        - epoch = number of epochs to run
-        - n_jobs = number of cores used for execution
-    Expected Output  --
-        Model - Trained model
+        - model = Trained matrix factorization model
+        - interactions = dataset used for training the model
+    Expected Output -
+        - item_emdedding_distance_matrix = Pandas dataframe containing cosine distance matrix b/w items
     '''
-    x = sparse.csr_matrix(interactions.values)
-    model = LightFM(no_components=n_components, loss=loss, k=k)
-    model.fit(x, epochs=epoch, num_threads=n_jobs)
-    return model
+    df_item_norm_sparse = sparse.csr_matrix(model.item_embeddings)
+    similarities = cosine_similarity(df_item_norm_sparse)
+    item_emdedding_distance_matrix = pd.DataFrame(similarities)
+    item_emdedding_distance_matrix.columns = interactions.columns
+    item_emdedding_distance_matrix.index = interactions.columns
+    return item_emdedding_distance_matrix
 
+def sample_recommendation_user(model, interactions, user_id, user_dict,
+                               item_dict, threshold=0, nrec_items=10, show=True):
+    '''
+    Function to produce user recommendations
+    Required Input -
+        - model = Trained matrix factorization model
+        - interactions = dataset used for training the model
+        - user_id = user ID for which we need to generate recommendation
+        - user_dict = Dictionary type input containing interaction_index as key and user_id as value
+        - item_dict = Dictionary type input containing item_id as key and item_name as value
+        - threshold = value above which the rating is favorable in new interaction matrix
+        - nrec_items = Number of output recommendation needed
+    Expected Output -
+        - Prints list of items the given user has already bought
+        - Prints list of N recommended items  which user hopefully will be interested in
+    '''
+    n_users, n_items = interactions.shape
+    user_x = user_dict[user_id]
+    scores = pd.Series(model.predict(user_x, np.arange(n_items)))
+    scores.index = interactions.columns
+    scores = list(pd.Series(scores.sort_values(ascending=False).index))
 
+    known_items = list(pd.Series(interactions.loc[user_id, :] \
+                                     [interactions.loc[user_id, :] > threshold].index) \
+                       .sort_values(ascending=False))
+
+    scores = [x for x in scores if x not in known_items]
+    return_score_list = scores[0:nrec_items]
+    known_items = list(pd.Series(known_items).apply(lambda x: item_dict[x]))
+    scores = list(pd.Series(return_score_list).apply(lambda x: item_dict[x]))
+    if show == True:
+        print("Known Likes:")
+        counter = 1
+        for i in known_items:
+            print(str(counter) + '- ' + i)
+            counter += 1
+
+        print("\n Recommended Items:")
+        counter = 1
+        for i in scores:
+            print(str(counter) + '- ' + i)
+            counter += 1
+    return return_score_list
+
+def create_user_dict(interactions):
+    '''
+    Function to create a user dictionary based on their index and number in interaction dataset
+    Required Input -
+        interactions - dataset create by create_interaction_matrix
+    Expected Output -
+        user_dict - Dictionary type output containing interaction_index as key and user_id as value
+    '''
+    user_id = list(interactions.index)
+    user_dict = {}
+    counter = 0
+    for i in user_id:
+        user_dict[i] = counter
+        counter += 1
+    return user_dict
 # ***********************************************************************************************
-fr = open('BxUB.json', )
+fr = open('parttialbook.json', )
 data = json.load(fr)
 dataset = Dataset()
-dataset.fit((x['User-ID'] for x in data), (x['ISBN'] for x in data), (x['Book-Rating'] for x in data),
-            (x['Author'] for x in data))
+dataset.fit_partial((x['User-ID'] for x in data), (x['ISBN'] for x in data), None,
+                    (x['Author'] for x in data))
 (interactions, weights) = dataset.build_interactions(((x['User-ID'], x['ISBN']) for x in data))
 print(repr(interactions))
-item_features = dataset.build_item_features(((x["ISBN"], [x["Author"]]) for x in data))
+item_features = dataset.build_item_features(((x["ISBN"], [x["Author"]]) for x in data), normalize=True)
 print(repr(item_features))
-
-'''
-
-data = json.load(fr)
-df = pd.read_json(r'BxUB.json')
-item_dict = create_item_dict(df, "ISBN", "Title")
-dataset = Dataset()
-
-(interactions, weights) = dataset.build_interactions(((x['User-ID'], x['ISBN']) for x in data))
-print(repr(interactions))
-#print("hello")
-
-fr = open('Mybook_user.json', )
-data_user = json.load(fr)
-df = pd.read_json(r'Mybook_user.json')
-item_dict = create_item_dict(df, "ISBN", "Title")
-dataset = Dataset()
-dataset.fit((x['User-ID'] for x in data_user), (x['ISBN'] for x in data_user), None, (x['Author'] for x in data_user))
-(interactions, weights) = dataset.build_interactions(((x['User-ID'], x['ISBN']) for x in data_user))
-print(repr(interactions))
-ISBN, Blurb = dataset.interactions_shape()
-y = 'Title: {}, Blurb {}.'.format(ISBN, Blurb)
-print(y)
-print("hello")
-item_features = dataset.build_item_features(((x["ISBN"], [x["Author"]]) for x in data_user))
-# interactions = dataset.build_interactions(((x["Title"], x["Blurb"]) for x in data))
-model = LightFM(loss='bpr')
+alpha = 1e-05
+epochs = 70
+num_components = 32
+model = LightFM(no_components=num_components,
+                loss='bpr',
+                learning_schedule='adadelta',
+                user_alpha=alpha,
+                item_alpha=alpha)
 model.fit(interactions, item_features=item_features)
-item_emdedding_distance_matrix = create_item_emdedding_distance_matrix(model, interactions)
+df = pd.read_json(r'parttialbook.json')
+interactions1 = create_interaction_matrix(df, "User-ID", "ISBN", "Book-Rating", norm=False, threshold=None)
 
-#item_item_recommendation(item_emdedding_distance_matrix, "440220653",
-#                             item_dict, n_items=10, show=True)
-
-print("hello")
-'''
-''''
-model = LightFM(loss='bpr')
-model.fit(interactions, item_features=item_features)
-print(repr(item_features))
-
-df=pd.read_json(r'books_with_blurbs.json')
-interactions = create_interaction_matrix(df, "Title", "Blurb", norm=False, threshold=None)
-model = runMF(interactions, n_components=30, loss='bpr', k=15, epoch=30, n_jobs=4)
-item_emdedding_distance_matrix = create_item_emdedding_distance_matrix(model, interactions)
-item_dict=create_item_dict(df, "ISBN", "Title")
-item_item_recommendation(item_emdedding_distance_matrix, "Goodbye to the Buttermilk Sky",
-                             item_dict, n_items=10, show=True)
-'''
+item_dict = create_item_dict(df, "ISBN", "Title", "Author")
+user_dict = create_user_dict(interactions1)
+sample_recommendation_user(model, interactions1, 276811, user_dict, 
+                           item_dict, threshold=4, nrec_items=3, show=True)
+#item_em_matrix = create_item_emdedding_distance_matrix(model, interactions1)
+#item_item_recommendation(item_em_matrix, "312970633", item_dict, n_items=10, show=True)
