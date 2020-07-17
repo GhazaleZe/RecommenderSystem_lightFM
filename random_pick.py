@@ -10,4 +10,4 @@ data = json.load(fr)
 x = random.choices(data,k=10000)
 
 with open('renttherunway_limited.json', 'w', encoding='utf-8') as f:
-    json.dump(data, f, ensure_ascii=False, indent=4)
+    json.dump(x, f, ensure_ascii=False, indent=4)
