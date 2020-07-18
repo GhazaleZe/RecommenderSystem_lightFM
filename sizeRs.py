@@ -67,7 +67,7 @@ def create_user_dict(interactions):
     return user_dict
 
 
-def create_item_dict(df, id_col, name_col):
+def create_item_dict(df, id_col, name_col, size_col):
     '''
     Function to create an item dictionary based on their item_id and item name
     Required Input -
@@ -79,7 +79,7 @@ def create_item_dict(df, id_col, name_col):
     '''
     item_dict = {}
     for i in range(df.shape[0]):
-        item_dict[(df.loc[i, id_col])] = df.loc[i, name_col]
+        item_dict[(df.loc[i, id_col])] = str(df.loc[i, name_col]) + " : " + str(df.loc[i, str(size_col)])
     return item_dict
 
 
@@ -177,6 +177,51 @@ def random_train_test_split(interactions,
     return train, test
 
 
+def sample_recommendation_user(model, interactions, user_id, user_dict,
+                               item_dict, threshold=0, nrec_items=10, show=True):
+    '''
+    Function to produce user recommendations
+    Required Input -
+        - model = Trained matrix factorization model
+        - interactions = dataset used for training the model
+        - user_id = user ID for which we need to generate recommendation
+        - user_dict = Dictionary type input containing interaction_index as key and user_id as value
+        - item_dict = Dictionary type input containing item_id as key and item_name as value
+        - threshold = value above which the rating is favorable in new interaction matrix
+        - nrec_items = Number of output recommendation needed
+    Expected Output -
+        - Prints list of items the given user has already bought
+        - Prints list of N recommended items  which user hopefully will be interested in
+    '''
+    n_users, n_items = interactions.shape
+    user_x = user_dict[user_id]
+    scores = pd.Series(model.predict(user_x, np.arange(n_items)))
+    scores.index = interactions.columns
+    scores = list(pd.Series(scores.sort_values(ascending=False).index))
+
+    known_items = list(pd.Series(interactions.loc[user_id, :] \
+                                     [interactions.loc[user_id, :] > threshold].index) \
+                       .sort_values(ascending=False))
+
+    scores = [x for x in scores if x not in known_items]
+    return_score_list = scores[0:nrec_items]
+    known_items = list(pd.Series(known_items).apply(lambda x: item_dict[x]))
+    scores = list(pd.Series(return_score_list).apply(lambda x: item_dict[x]))
+    if show == True:
+        print("Known Likes:")
+        counter = 1
+        for i in known_items:
+            print(str(counter) + '- ' + str(i))
+            counter += 1
+
+        print("\n Recommended Items:")
+        counter = 1
+        for i in scores:
+            print(str(counter) + '- ' + str(i))
+            counter += 1
+    return return_score_list
+
+
 fr = open('renttherunway_lim.json', )
 data = json.load(fr)
 dataset = Dataset()
@@ -214,30 +259,10 @@ print('AUC: train %.2f, test %.2f.' % (train_auc, test_auc))'''
 df = pd.read_json(r'renttherunway_lim.json')
 interactions1 = create_interaction_matrix(df, "user_id", "item_id", "rating", norm=False, threshold=None)
 user_dict = create_user_dict(interactions1)
-item_dict = create_item_dict(df, "item_id", "item_id")
-x = sample_recommendation_item(model, interactions1, 1108814, user_dict, item_dict, 4)
-for i in x:
-    print(i)
+item_dict = create_item_dict(df, "item_id", "item_id", "size")
+# x = sample_recommendation_item(model, interactions1, 1108814, user_dict, item_dict, 4)
+# for i in x:
+#    print(i)
+sample_recommendation_user(model, interactions1, 907115, user_dict,
+                           item_dict, threshold=7, nrec_items=5, show=True)
 
-'''def get_similar_tags(model, tag_id):
-    # Define similarity as the cosine of the angle
-    # between the tag latent vectors
-
-    # Normalize the vectors to unit length
-    tag_embeddings = (model.item_embeddings.T
-                      / np.linalg.norm(model.item_embeddings, axis=1)).T
-
-    query_embedding = tag_embeddings[tag_id]
-    similarity = np.dot(tag_embeddings, query_embedding)
-    most_similar = np.argsort(-similarity)[1:4]
-
-    return most_similar
-
-
-tag_labels = pd.Index(['small', 'large', 'fit'],
-               name='fit')
-for tag in (u'bayesian', u'regression', u'survival'):
-    tag_id = tag_labels.tolist().index(tag)
-    print('Most similar tags for %s: %s' % (tag_labels[tag_id],
-                                            tag_labels[get_similar_tags(model, tag_id)]))
-'''
