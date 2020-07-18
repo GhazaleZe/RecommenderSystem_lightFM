@@ -138,7 +138,7 @@ def sample_recommendation_user(model, interactions, user_id, user_dict,
     scores = list(pd.Series(scores.sort_values(ascending=False).index))
 
     known_items = list(pd.Series(interactions.loc[user_id, :] \
-                                     [interactions.loc[user_id, :] > threshold].index) \
+                                     [interactions.loc[user_id, :] == threshold].index) \
                        .sort_values(ascending=False))
 
     scores = [x for x in scores if x not in known_items]
@@ -175,7 +175,7 @@ def create_user_dict(interactions):
         counter += 1
     return user_dict
 # ***********************************************************************************************
-fr = open('parttialbook.json', )
+fr = open('mainbookup_lim1.json', )
 data = json.load(fr)
 dataset = Dataset()
 dataset.fit_partial((x['User-ID'] for x in data), (x['ISBN'] for x in data), None,
@@ -193,12 +193,13 @@ model = LightFM(no_components=num_components,
                 user_alpha=alpha,
                 item_alpha=alpha)
 model.fit(interactions, item_features=item_features)
-df = pd.read_json(r'parttialbook.json')
-interactions1 = create_interaction_matrix(df, "User-ID", "ISBN", "Book-Rating", norm=False, threshold=None)
+df = pd.read_json(r'mainbookup_lim1.json')
+interactions1 = create_interaction_matrix(df, "User-ID", "ISBN", "Author", norm=False, threshold=None)
 
 item_dict = create_item_dict(df, "ISBN", "Title", "Author")
 user_dict = create_user_dict(interactions1)
-sample_recommendation_user(model, interactions1, 276811, user_dict, 
-                           item_dict, threshold=4, nrec_items=3, show=True)
+sample_recommendation_user(model, interactions1, 178622, user_dict,
+                           item_dict, threshold="Rickey Singleton", nrec_items=10, show=True)
+#model.item_embeddings
 #item_em_matrix = create_item_emdedding_distance_matrix(model, interactions1)
 #item_item_recommendation(item_em_matrix, "312970633", item_dict, n_items=10, show=True)
