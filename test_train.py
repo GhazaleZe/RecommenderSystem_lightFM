@@ -84,7 +84,7 @@ def random_train_test_split(interactions,
                          dtype=interactions.dtype)
 
     return train, test
-fr = open('parttialbook.json', )
+fr = open('mainbookup_lim1.json', )
 data = json.load(fr)
 dataset = Dataset()
 dataset.fit((x['User-ID'] for x in data), (x['ISBN'] for x in data), (x['Book-Rating'] for x in data),
