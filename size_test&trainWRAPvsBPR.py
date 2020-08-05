@@ -97,12 +97,12 @@ epochs = 70
 
 adagrad_model = LightFM(no_components=30,
                         loss='bpr',
-                        learning_schedule='adagrad',
+                        learning_schedule='adadelta',
                         user_alpha=alpha,
                         item_alpha=alpha)
 adadelta_model = LightFM(no_components=30,
                         loss='warp',
-                        learning_schedule='adagrad',
+                        learning_schedule='adadelta',
                         user_alpha=alpha,
                         item_alpha=alpha)
 
@@ -121,5 +121,5 @@ for epoch in range(epochs):
 x = np.arange(len(adagrad_auc))
 plt.plot(x, np.array(adagrad_auc))
 plt.plot(x, np.array(adadelta_auc))
-plt.legend(['BPR', 'adadelta'], loc='lower right')
+plt.legend(['BPR', 'WARP'], loc='lower right')
 plt.show()
