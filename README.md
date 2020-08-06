@@ -69,7 +69,7 @@ model = LightFM(no_components=num_components,
                 user_alpha=alpha,
                 item_alpha=alpha)
 ```
-For testing and validating the model you need to split data to test and train like in test_train.py.
+For testing and validating the model you need to split data to test and train like in test_train.py.  
 Testing **learning_schedule** adadelta vs adagrad for cloth dataset:  
 <img width="448" alt="Screenshot (994)" src="https://user-images.githubusercontent.com/41547574/89573678-36f8c100-d840-11ea-892b-8c2a2d2f9ef1.png">
 
