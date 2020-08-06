@@ -1,6 +1,8 @@
 # RecommenderSystem_lightFM :blush:
 ## Overview:
-Recommender systems are a very popular topic in e-commerce. They are frameworks and engines which help us to implement a recommender system easier. One of these engines is [LightFM](https://making.lyst.com/lightfm/docs/home.html) which is a satisfiable python framework.
+Recommender systems are a very popular topic in e-commerce. They are frameworks and engines which help us to implement a recommender system easier. One of these engines is [LightFM](https://making.lyst.com/lightfm/docs/home.html) which is a satisfiable python framework.  
+This project is part of a 4-person team project, each person has worked on a special package my package has been **LightFM**.  
+You can see our final report in **Final_Report_Group8.pdf**.
 ## Goal:
 The goal is to implement a recommender system with LightFM with 3 of [Kaggle](https://www.kaggle.com/) datasets.
 3 data set and their related files are:
